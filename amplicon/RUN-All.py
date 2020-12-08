@@ -28,7 +28,7 @@ def add_args():
 	parser.add_argument("-y" ,"--type", type=str, default="c", help="type for basecall [c/o/u/b]")
 	
     ## arguments for alignment
-    parser.add_argument("-b" ,"--bowtie_index", type=str , help="<dir>/prefix of bowtie index")
+    parser.add_argument("-b" ,"--bwa_index", type=str , help="<dir>/prefix of bwa index")
 	
 	### arguments for depth-filtering
 	parser.add_argument("-C" ,"--cycle", type=int ,default=8, help="Number of cycle [int]")
@@ -55,7 +55,7 @@ def main():
 	WD=args.work_dir
 	type=args.type
 
-	align_index=args.bowtie_index
+	align_index=args.bwa_index
 
 	cycle=args.cycle
 	min_nUID=args.min_umi_pair
