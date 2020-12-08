@@ -21,7 +21,7 @@ def pair_save(WD, input, sample, target_info, cutoff=1):
 	poslist=target_info["pos"]
 	loci=zip(targets, chrs, poslist)
 
-	## read umi from bam
+	## read UID from bam
 	bam_data={}
 	for seg in ["R1", "R2"]:
 		bamfile=pysam.AlignmentFile("{}/align/{}_{}.sorted.bam".format(WD, input, seg), "rb")
@@ -30,9 +30,9 @@ def pair_save(WD, input, sample, target_info, cutoff=1):
 			for read in bamfile.fetch(chr, min(poslist), max(poslist) ):
 				id=read.qname
 				read_id=id.split("_")[0]
-				umi=id.split("_")[-1]
-				target_bam=id.split("_")[-2]
-				if target_bam!=target: continue
+				UID=id.split("_")[-1]
+				target_in_bam=id.split("_")[-2]
+				if target_in_bam!=target: continue
 				if min(read.get_reference_positions())-1>min(poslist): continue
 				chr=read.reference_id
 				cigar=read.cigarstring
@@ -42,7 +42,7 @@ def pair_save(WD, input, sample, target_info, cutoff=1):
 					chk=bam_data[read_id+"_"+target]
 				except KeyError:
 					bam_data[read_id+"_"+target]=[]
-				bam_data[read_id+"_"+target].append([umi, target])
+				bam_data[read_id+"_"+target].append([UID, target])
 	
 	df=[]
 	for k in bam_data.keys():
@@ -51,11 +51,11 @@ def pair_save(WD, input, sample, target_info, cutoff=1):
 		id=k.split("_")[0]
 		tmp=bam_data[k]
 		df.append([id, tmp[0][0], tmp[1][0], tmp[0][0]+"_"+tmp[1][0], tmp[0][1]])
-	df=pd.DataFrame(df, columns=["id", "R1_UMI", "R2_UMI", "pair", "target"])
+	df=pd.DataFrame(df, columns=["id", "R1_UID", "R2_UID", "pair", "target"])
 	## filter by pair redundancy
 	uniq=np.unique(df["pair"], return_counts=True)
 	count_dic=dict(zip(uniq[0], uniq[1]))
 	df["count"]=df["pair"].apply(lambda x: count_dic[x])
-	filtered=df.loc[df["count"]>=cutoff,["id", "R1_UMI", "R2_UMI", "pair", "target"]]
+	filtered=df.loc[df["count"]>=cutoff,["id", "R1_UID", "R2_UID", "pair", "target"]]
 	filtered.to_csv("{}/pair/{}_barcode_pair.txt".format(WD, sample), sep="\t", index=False)
 

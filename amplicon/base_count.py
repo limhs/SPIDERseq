@@ -5,7 +5,7 @@ import numpy as np
 import time
 import pandas as pd
 import pysam
-from conventional_call import basic_base_count, umi_based_call
+from conventional_call import basic_base_count, uid_based_call
 from utils import get_loci, get_vcf_info, output_merge, run_multi, set_pos, get_refseq
 import re
 

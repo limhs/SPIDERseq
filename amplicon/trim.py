@@ -54,13 +54,13 @@ def flk_trim(WD, input, target_info, targets):
 				except ValueError:
 					SeqIO.write(read2[len(R2_flk):], out["R2"][target], "fastq")
 
-def UMI_extract(WD, input, target_info, targets):
+def UID_extract(WD, input, target_info, targets):
 
 		for target in targets:
 			fastq_1 = SeqIO.parse(open("{}/processing/{}_R1_flkrm.{}.fastq".format(WD, input, target)), "fastq")
 			fastq_2 = SeqIO.parse(open("{}/processing/{}_R2_flkrm.{}.fastq".format(WD, input, target)), "fastq")
-			r1_pattern=target_info["UMI_fwd"][target]
-			r2_pattern=target_info["UMI_rev"][target]
+			r1_pattern=target_info["UID_fwd"][target]
+			r2_pattern=target_info["UID_rev"][target]
 
 			amp_size=target_info["amplicon_size"][target]
 			out_R1 = open("{}/processing/{}_R1_processed.{}.fastq".format(WD, input, target), "w")
@@ -69,24 +69,24 @@ def UMI_extract(WD, input, target_info, targets):
 			for read1 in fastq_1:
 				read2=next(fastq_2)
 				filter_check=False
-				umis=[]
+				UIDs=[]
 				for read in [read1, read2]:
 					pattern=r1_pattern
 					if read.description.split(" ")[-1].split(":")[0]=="2":
 						pattern=r2_pattern
 
 					pattern=pattern.replace("N", ".")
-					umi=str(read[:len(pattern)].seq)
-					umi_qs=read[:len(pattern)].letter_annotations["phred_quality"]
-					umis.append(umi)
-					if not re.match(pattern, umi) or min(umi_qs)<25:
+					UID=str(read[:len(pattern)].seq)
+					UID_qs=read[:len(pattern)].letter_annotations["phred_quality"]
+					UIDs.append(UID)
+					if not re.match(pattern, UID) or min(UID_qs)<25:
 						filter_check=True
 						break
 
 				if filter_check: continue
 
-				read1.id=read1.id+"_"+umis[0]
-				read2.id=read2.id+"_"+umis[1]
+				read1.id=read1.id+"_"+UIDs[0]
+				read2.id=read2.id+"_"+UIDs[1]
 				R1stt=len(r1_pattern)
 				R1end=len(r1_pattern)+amp_size
 				R2stt=len(r2_pattern)
@@ -115,9 +115,9 @@ def trim_sequence(WD, input, target_info):
 	print("Trim gene-specific flanking sequence")	
 	flk_trim(WD, input, target_info, targets)
 
-	## Extract UMI sequence
-	print("Extract UMI sequence")
-	UMI_extract(WD, input, target_info, targets)
+	## Extract UID sequence
+	print("Extract UID sequence")
+	UID_extract(WD, input, target_info, targets)
 
 
 	# ## merge & cleaning

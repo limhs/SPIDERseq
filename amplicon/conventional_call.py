@@ -5,7 +5,7 @@ import os
 from utils import get_loci, get_vcf_info, output_merge, run_multi, set_pos
 import time
 
-def umi_based_call(WD,input, sample, target_info,n_core, min_base_ratio):
+def uid_based_call(WD,input, sample, target_info,n_core, min_base_ratio):
 	def thread_function(WD, input, sample,n, target_info, df_chunk, min_base_ratio, idTOpair):
 		out_df=[]
 		for target, chr, poslist in loci:
@@ -44,7 +44,7 @@ def umi_based_call(WD,input, sample, target_info,n_core, min_base_ratio):
 			merged=output_merge(target,chr, poslist, dfdic, out_df, min_base_ratio)
 			out_df=merged[0]
 		out_df=pd.DataFrame(out_df, columns="locus_id\tA\tT\tC\tG\tN".split('\t')).set_index("locus_id")
-		out_df.to_csv("{}/base_call/{}.umi.{}.base_count.txt".format(WD, sample, str(n)), sep='\t')
+		out_df.to_csv("{}/base_call/{}.uid.{}.base_count.txt".format(WD, sample, str(n)), sep='\t')
 
 	loci=get_loci(target_info)
 	pair_info=pd.read_csv("{}/pair/{}_barcode_pair.txt".format(WD, input), sep='\t')
@@ -57,14 +57,14 @@ def umi_based_call(WD,input, sample, target_info,n_core, min_base_ratio):
 	for n in range(1, n_core+1):
 		while True:
 			try:
-				out_chunk=pd.read_csv("{}/base_call/{}.umi.{}.base_count.txt".format(WD, sample, str(n)), sep='\t', index_col="locus_id")
+				out_chunk=pd.read_csv("{}/base_call/{}.uid.{}.base_count.txt".format(WD, sample, str(n)), sep='\t', index_col="locus_id")
 			except IOError:
 				time.sleep(30)
 				continue
 			break
 		out_df=out_df.add(out_chunk, fill_value=0)
-		os.system("rm {}/base_call/{}.umi.{}.base_count.txt".format(WD, sample, str(n)) )
-	out_df.astype("int").to_csv("{}/base_call/{}.umi.base_count.txt".format(WD, sample), sep='\t')
+		os.system("rm {}/base_call/{}.uid.{}.base_count.txt".format(WD, sample, str(n)) )
+	out_df.astype("int").to_csv("{}/base_call/{}.uid.base_count.txt".format(WD, sample), sep='\t')
 
 
 def basic_base_count(WD, input, sample, target_info):
