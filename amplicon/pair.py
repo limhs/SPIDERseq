@@ -1,18 +1,12 @@
+#!/usr/bin/env python
 import pysam
 import pandas as pd
 import numpy as np
 import argparse
+from utils import set_pos
 import os
-def get_pos_list(poslist):
-	if ";" in poslist:
-		poslist=poslist.split(";")
-	elif "-" in poslist:
-		poslist=range(int(poslist.split("-")[0]), int(poslist.split("-")[1])+1)
-	else:
-		poslist=[poslist]
-	return [int(pos) for pos in poslist]
 
-def pair_save(WD, input, sample, target_info, cutoff=1):
+def pair_save(WD, input, sample, target_info):
 	if not os.path.exists("{}/pair".format(WD)):
 		os.mkdir("{}/pair".format(WD))
 
@@ -26,7 +20,7 @@ def pair_save(WD, input, sample, target_info, cutoff=1):
 	for seg in ["R1", "R2"]:
 		bamfile=pysam.AlignmentFile("{}/align/{}_{}.sorted.bam".format(WD, input, seg), "rb")
 		for target, chr, poslist in loci:
-			poslist=get_pos_list(poslist)
+			poslist=set_pos(poslist)
 			for read in bamfile.fetch(chr, min(poslist), max(poslist) ):
 				id=read.qname
 				read_id=id.split("_")[0]
@@ -52,10 +46,5 @@ def pair_save(WD, input, sample, target_info, cutoff=1):
 		tmp=bam_data[k]
 		df.append([id, tmp[0][0], tmp[1][0], tmp[0][0]+"_"+tmp[1][0], tmp[0][1]])
 	df=pd.DataFrame(df, columns=["id", "R1_UID", "R2_UID", "pair", "target"])
-	## filter by pair redundancy
-	uniq=np.unique(df["pair"], return_counts=True)
-	count_dic=dict(zip(uniq[0], uniq[1]))
-	df["count"]=df["pair"].apply(lambda x: count_dic[x])
-	filtered=df.loc[df["count"]>=cutoff,["id", "R1_UID", "R2_UID", "pair", "target"]]
-	filtered.to_csv("{}/pair/{}_barcode_pair.txt".format(WD, sample), sep="\t", index=False)
+	df.to_csv("{}/pair/{}_barcode_pair.txt".format(WD, sample), sep="\t", index=False)
 

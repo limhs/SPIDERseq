@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import argparse
 import gzip
 import os
@@ -16,13 +17,12 @@ def flk_trim(WD, input, target_info, targets):
 	fastq_2 = SeqIO.parse(gzip.open(R2_path, "rt"), "fastq")
 
 	flks=zip(target_info.index, target_info["flanking_R1"],target_info["flanking_R2"], target_info["fwd_primer_binding"], target_info["rev_primer_binding"])
-
 	out={}
 	out["R1"]={}
 	out["R2"]={}
 	for target in targets:
-		out["R1"][target] = open("{}/processing/{}_R1_flkrm.{}.fastq".format(WD, input, target), "w")
-		out["R2"][target] = open("{}/processing/{}_R2_flkrm.{}.fastq".format(WD, input, target), "w")
+		out["R1"][target] = open("{}/trimmed/{}_R1_flkrm.{}.fastq".format(WD, input, target), "w")
+		out["R2"][target] = open("{}/trimmed/{}_R2_flkrm.{}.fastq".format(WD, input, target), "w")
 
 	for read1 in fastq_1:
 		read2=next(fastq_2)
@@ -57,14 +57,14 @@ def flk_trim(WD, input, target_info, targets):
 def UID_extract(WD, input, target_info, targets):
 
 		for target in targets:
-			fastq_1 = SeqIO.parse(open("{}/processing/{}_R1_flkrm.{}.fastq".format(WD, input, target)), "fastq")
-			fastq_2 = SeqIO.parse(open("{}/processing/{}_R2_flkrm.{}.fastq".format(WD, input, target)), "fastq")
+			fastq_1 = SeqIO.parse(open("{}/trimmed/{}_R1_flkrm.{}.fastq".format(WD, input, target)), "fastq")
+			fastq_2 = SeqIO.parse(open("{}/trimmed/{}_R2_flkrm.{}.fastq".format(WD, input, target)), "fastq")
 			r1_pattern=target_info["UID_fwd"][target]
 			r2_pattern=target_info["UID_rev"][target]
 
 			amp_size=target_info["amplicon_size"][target]
-			out_R1 = open("{}/processing/{}_R1_processed.{}.fastq".format(WD, input, target), "w")
-			out_R2 = open("{}/processing/{}_R2_processed.{}.fastq".format(WD, input, target), "w")
+			out_R1 = open("{}/trimmed/{}_R1_processed.{}.fastq".format(WD, input, target), "w")
+			out_R2 = open("{}/trimmed/{}_R2_processed.{}.fastq".format(WD, input, target), "w")
 
 			for read1 in fastq_1:
 				read2=next(fastq_2)
@@ -107,10 +107,9 @@ def UID_extract(WD, input, target_info, targets):
 def trim_sequence(WD, input, target_info):
 
 	targets=target_info.index
-
 	## Trim gene-specific flanking sequence
-	if not os.path.exists("{}/processing".format(WD)):
-		os.mkdir("{}/processing".format(WD))
+	if not os.path.exists("{}/trimmed".format(WD)):
+		os.mkdir("{}/trimmed".format(WD))
 
 	print("Trim gene-specific flanking sequence")	
 	flk_trim(WD, input, target_info, targets)
@@ -121,15 +120,11 @@ def trim_sequence(WD, input, target_info):
 
 
 	# ## merge & cleaning
-	if not os.path.exists("{}/trimmed".format(WD)):
-		os.mkdir("{}/trimmed".format(WD))
+	os.system("cat {WD}/trimmed/{input}_R1_processed.*.fastq > {WD}/trimmed/{input}_R1.trimmed.fastq".format(WD=WD, input=input))
+	os.system("cat {WD}/trimmed/{input}_R2_processed.*.fastq > {WD}/trimmed/{input}_R2.trimmed.fastq".format(WD=WD, input=input))
 
-	
-	os.system("cat {WD}/processing/{input}_R1_processed.*.fastq > {WD}/trimmed/{input}_R1.trimmed.fastq".format(WD=WD, input=input))
-	os.system("cat {WD}/processing/{input}_R2_processed.*.fastq > {WD}/trimmed/{input}_R2.trimmed.fastq".format(WD=WD, input=input))
-
-	os.system("gzip {}/processing/{}_R1_processed.*.fastq".format(WD, input))
-	os.system("gzip {}/processing/{}_R2_processed.*.fastq".format(WD, input))
 	for target in targets:
-		os.system("rm {}/processing/{}_R1_flkrm.{}.fastq".format(WD, input, target))
-		os.system("rm {}/processing/{}_R2_flkrm.{}.fastq".format(WD, input, target))
+		os.system("rm {}/trimmed/{}_R1_flkrm.{}.fastq".format(WD, input, target))
+		os.system("rm {}/trimmed/{}_R2_flkrm.{}.fastq".format(WD, input, target))
+		os.system("rm {}/trimmed/{}_R1_processed.{}.fastq".format(WD, input, target))
+		os.system("rm {}/trimmed/{}_R2_processed.{}.fastq".format(WD, input, target))

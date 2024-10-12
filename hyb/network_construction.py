@@ -18,10 +18,11 @@ def network_const(WD, sample, target_info,  threads, cycle=8):
 	pair_info=pd.read_csv("{}/pair/{}_barcode_pair.txt".format(WD, sample), sep="\t", index_col=0)
 	uniq=np.unique(pair_info["pair"], return_counts=True)
 	count_dic=dict(zip(uniq[0], uniq[1]))
-	pair_info["GC_R1"]=pair_info["R1_UID"].apply(GC)
-	pair_info["GC_R2"]=pair_info["R2_UID"].apply(GC)
+	pair_info["GC_R1"]=pair_info["frag-R1U"].apply(GC)
+	pair_info["GC_R2"]=pair_info["frag-R2U"].apply(GC)
 	filtered=pair_info.loc[(pair_info["GC_R1"] <0.8) & (pair_info["GC_R2"] <0.8) , :]
 	targets=target_info.index
+	
 	if threads>len(targets):
 		threads=len(targets)
 	Ps=[]
@@ -45,7 +46,7 @@ def network_const(WD, sample, target_info,  threads, cycle=8):
 				time.sleep(30)
 				continue
 			break
-		out_df=pd.concat([out_df, out_chunk])
+		out_df=out_df.append(out_chunk)
 		os.system("rm {}/cluster/{}.{}.cluster.txt".format(WD, sample,str(n))) 
 
 	out_df.to_csv("{}/cluster/{}.cluster.txt".format(WD, sample), sep='\t', index=False)
@@ -54,31 +55,33 @@ def network_const(WD, sample, target_info,  threads, cycle=8):
 def thread_function(WD, sample, n, targets_chunk, cycle, filtered, count_dic):
 	out_cluster=[]
 	for target in targets_chunk:
-		print(target)
 		max_pair=(2**(cycle-2))
 		## collapse pairs
-		U1_df=filtered.loc[filtered["target"]==target, :].groupby("R1_UID")["R2_UID"].apply(set).reset_index(name="Pairs")
-		U1_df["size"]=U1_df["Pairs"].apply(len)
-		U1_ban=set(U1_df.loc[U1_df["size"]>cycle, "R1_UID"])
-		U2_df=filtered.loc[filtered["target"]==target, :].groupby("R2_UID")["R1_UID"].apply(set).reset_index(name="Pairs")
-		U2_df["size"]=U2_df["Pairs"].apply(len)
-		U2_ban=set(U2_df.loc[U2_df["size"]>cycle, "R2_UID"])
+
+		U1_df=filtered.loc[filtered["target"]==target, :].groupby("frag-R1U")["frag-R2U"].apply(set).reset_index(name="Pairs")
+		U1_df["U1_size"]=U1_df["Pairs"].apply(len)
+		U1_ban=set(U1_df.loc[U1_df["U1_size"]>cycle, "frag-R1U"])
+		
+		U2_df=filtered.loc[filtered["target"]==target, :].groupby("frag-R2U")["frag-R1U"].apply(set).reset_index(name="Pairs")
+		U2_df["U2_size"]=U2_df["Pairs"].apply(len)
+		U2_ban=set(U2_df.loc[U2_df["U2_size"]>cycle, "frag-R2U"])
 		
 		U1_df["Pairs"]=U1_df["Pairs"]-U2_ban
-		U1_df=U1_df.loc[~(U1_df["R1_UID"].isin(U1_ban)), :]
-		U1_df["size"]=U1_df["Pairs"].apply(len)
-		U1_df["linked_UID_R2s"]=U1_df["Pairs"].apply(lambda x : ";".join(list(x)))
+		U1_df=U1_df.loc[~(U1_df["frag-R1U"].isin(U1_ban)), :]
+		U1_df["U1_size"]=U1_df["Pairs"].apply(len)
+		U1_df["linked_UID_R2"]=U1_df["Pairs"].apply(lambda x : ";".join(list(x)))
 		U1_df["target"]=target
 
 		U2_df["Pairs"]=U2_df["Pairs"]-U1_ban
-		U2_df=U2_df.loc[~(U2_df["R2_UID"].isin(U2_ban)), :]
-		U2_df["size"]=U2_df["Pairs"].apply(len)
-		U2_df["linked_UID_R1s"]=U2_df["Pairs"].apply(lambda x : ";".join(list(x)))
+		U2_df=U2_df.loc[~(U2_df["frag-R2U"].isin(U2_ban)), :]
+		U2_df["U2_size"]=U2_df["Pairs"].apply(len)
+		U2_df["linked_UID_R1"]=U2_df["Pairs"].apply(lambda x : ";".join(list(x)))
 		U2_df["target"]=target
 		
-		U1_df=U1_df.set_index("R1_UID")
-		U2_df=U2_df.set_index("R2_UID")
+		U1_df=U1_df.set_index("frag-R1U")
+		U2_df=U2_df.set_index("frag-R2U")
 		if U1_df.shape[0]==0 or U2_df.shape[0]==0: continue
+
 		## clustering
 		seedlist=list(U1_df.index)
 		for seed in seedlist:
@@ -126,22 +129,23 @@ def thread_function(WD, sample, n, targets_chunk, cycle, filtered, count_dic):
 				nreads+=count_dic[p]
 
 			### check origin
-			u1c_max    = U1_df.loc[U1_df.index.isin(u1_cluster), "size"].max()
-			u1c_maxuid = U1_df.loc[U1_df.index.isin(u1_cluster), "size"].idxmax()
-			u2c_max    = U2_df.loc[U2_df.index.isin(u2_cluster), "size"].max()
-			u2c_maxuid = U2_df.loc[U2_df.index.isin(u2_cluster), "size"].idxmax()
+			u1c_max    = U1_df.loc[U1_df.index.isin(u1_cluster), "U1_size"].max()
+			u1c_maxuid = U1_df.loc[U1_df.index.isin(u1_cluster), "U1_size"].idxmax()
+			u2c_max    = U2_df.loc[U2_df.index.isin(u2_cluster), "U2_size"].max()
+			u2c_maxuid = U2_df.loc[U2_df.index.isin(u2_cluster), "U2_size"].idxmax()
 			maxi=u1c_max
 			origin_uid=u1c_maxuid
-			origin_side="UID_R1"
+			origin_side="frag-R1U"
 			if u2c_max>u1c_max:
 				maxi=u2c_max
 				origin_uid=u2c_maxuid
-				origin_side="UID_R2"
+				origin_side="frag-R2U"
 			if maxi>cycle: continue
 
 			### save
 			outform=[";".join(u1_cluster),str(len(u1_cluster)), ";".join(u2_cluster),str(len(u2_cluster)), target, origin_side, origin_uid, str(maxi), ";".join(pair_list), str(len(pair_list)), str(nreads)]
 			out_cluster.append(outform)
+			
 	out_cluster=pd.DataFrame(out_cluster, columns="UID_R1\tR1_size\tUID_R2\tR2_size\ttarget\tSegment\torigin\tNumber_of_branch\tpair_list\tnPairs\tnReads".split('\t'))
 	out_cluster.to_csv("{}/cluster/{}.{}.cluster.txt".format(WD, sample,str(n)),sep='\t', index=False )
 			

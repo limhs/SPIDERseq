@@ -22,6 +22,7 @@ def network_const(WD, sample, target_info,  threads, cycle=8):
 	pair_info["GC_R2"]=pair_info["R2_UID"].apply(GC)
 	filtered=pair_info.loc[(pair_info["GC_R1"] <0.8) & (pair_info["GC_R2"] <0.8) , :]
 	targets=target_info.index
+	
 	if threads>len(targets):
 		threads=len(targets)
 	Ps=[]
@@ -45,7 +46,7 @@ def network_const(WD, sample, target_info,  threads, cycle=8):
 				time.sleep(30)
 				continue
 			break
-		out_df=pd.concat([out_df, out_chunk])
+		out_df=out_df.append(out_chunk)
 		os.system("rm {}/cluster/{}.{}.cluster.txt".format(WD, sample,str(n))) 
 
 	out_df.to_csv("{}/cluster/{}.cluster.txt".format(WD, sample), sep='\t', index=False)
@@ -54,7 +55,6 @@ def network_const(WD, sample, target_info,  threads, cycle=8):
 def thread_function(WD, sample, n, targets_chunk, cycle, filtered, count_dic):
 	out_cluster=[]
 	for target in targets_chunk:
-		print(target)
 		max_pair=(2**(cycle-2))
 		## collapse pairs
 		U1_df=filtered.loc[filtered["target"]==target, :].groupby("R1_UID")["R2_UID"].apply(set).reset_index(name="Pairs")
@@ -79,6 +79,7 @@ def thread_function(WD, sample, n, targets_chunk, cycle, filtered, count_dic):
 		U1_df=U1_df.set_index("R1_UID")
 		U2_df=U2_df.set_index("R2_UID")
 		if U1_df.shape[0]==0 or U2_df.shape[0]==0: continue
+
 		## clustering
 		seedlist=list(U1_df.index)
 		for seed in seedlist:

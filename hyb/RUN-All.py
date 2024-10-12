@@ -26,7 +26,7 @@ def add_args():
 	parser.add_argument("-T" ,"--target_info", type=str, help="information of targeted region (tsv format)")
 	parser.add_argument("-t" , "--threads", type=int, default=1, help="threads (CPU, default : 1)")
 	parser.add_argument("-W" , "--work_dir", type=str, default="./", help="Working directory (base dir)")
-	parser.add_argument("-y" ,"--type", type=str, default="c", help="type for basecall [c/u/b], default : c")
+	parser.add_argument("-y" ,"--type", type=str, default="c", help="type for basecall [c/o/u/b], default : c")
 	
     ## arguments for alignment
 	parser.add_argument("-b" ,"--bwa_index", type=str, help="<dir>/prefix of bwa index")
@@ -73,27 +73,27 @@ def main():
 	target_info=pd.read_csv(target_path, sep="\t", index_col="target", keep_default_na=False)
 	targets=list(target_info.index)
 
-	if skip1==False and skip2==False:
+	if skip1==False:
 		print "-------Trimming"
-		trim.trim_sequence(WD, input, target_info)
+		# trim.trim_sequence(WD, input)
 		print "-------Alignment"
-		align.bwa(WD, input, threads, align_index)
+		# align.bwa(WD, input, threads, align_index)
 
-	else:
+	elif skip1==True:
 		print "Skipping trimming step"
 
     ### build peer-to-peer network
-	if type!="c" and skip2==False:
+	if type=="c" and skip2!=True:
 		print "-------pair_save"
-		pair.pair_save(WD, input, sample, target_info)
+		# pair.pair_save(WD, input, sample, target_info)
 		print "-------network_construction"
-		network_construction.network_const(WD, sample, target_info, threads, cycle)
+		# network_construction.network_const(WD, sample, target_info, threads, cycle)
 
 	else:
 		print "Skip building peer-to-peer network"
 
 
-    ## base call
+    ### base call
 	if indel_mode:
 		if not os.path.exists("{}/indel_call".format(WD)):
 			os.mkdir("{}/indel_call".format(WD))
